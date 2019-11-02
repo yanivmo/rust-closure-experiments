@@ -23,15 +23,19 @@ fn main() {
         .unwrap();
 }
 
-fn create_config(_conf: &Config) -> impl FnOnce(&mut web::ServiceConfig) {
+fn create_config<'a>(conf: &'a Config) -> impl FnOnce(&mut web::ServiceConfig) + 'a {
     move |app: &mut web::ServiceConfig| {
+        // Have to clone config because web::get().to by definition requires
+        // its argument to have static lifetime, which is longer than 'a
+        let my_own_conf_clone = conf.clone();
         app.service(
             web::scope("/user")
-                .route("", web::get().to(get_user))
+                .route("", web::get().to(move || get_user(&my_own_conf_clone)))
         );
     }
 }
 
-fn get_user() -> String {
+fn get_user(conf: &Config) -> String {
+    println!("Config {} is {} here!", conf.val3, conf.val1);
     "User McUser".to_string()
 }
